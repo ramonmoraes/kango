@@ -6,3 +6,4 @@
 /tmp/
 /.playwright-mcp/
 .playright-mcp
+/dist/

@@ -4,7 +4,7 @@ A local, single-user kanban app built with Go, HTMX, and SQLite. A minimal black
 
 ## Run
 
-Requires Go 1.25+ and a C compiler (the SQLite driver uses CGO; macOS Command Line Tools provide it).
+Requires Go 1.25+. SQLite uses a pure-Go driver, so no C compiler is required.
 
 ```sh
 go run .
@@ -20,6 +20,28 @@ make test
 ```
 
 The app binds to loopback by default and accepts only localhost/loopback hosts and same-origin browser requests. It is designed for local use without accounts.
+
+## Release builds
+
+Commit your changes, then build all four platform archives:
+
+```sh
+make release-build VERSION=v0.1.0
+```
+
+This runs the tests and cross-compiles embedded-asset binaries for macOS (`darwin`) and Linux, each on AMD64 and ARM64. The archives and SHA-256 checksums are written to `dist/v0.1.0/`. All binaries include SQLite and the browser assets; no Go installation or separate asset files are needed to run them.
+
+After pushing that commit to GitHub, publish those artifacts:
+
+```sh
+gh auth login
+git push
+make release-publish VERSION=v0.1.0
+```
+
+Publishing requires a clean working tree, archives built from the current commit, valid checksums, and a commit already present on GitHub. It creates a new version tag and release in the repository configured by `origin`, and uploads all four archives, checksums, and the source commit reference. Existing version tags are rejected instead of overwritten. Use a new `VERSION` for each release.
+
+Download the archive matching your OS and architecture, extract it, then run `./kango`. The default address is <http://localhost:2207>.
 
 ## Features
 
