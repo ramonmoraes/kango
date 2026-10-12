@@ -1,0 +1,284 @@
+{{define "document"}}
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Kango — your workspace</title>
+  <link rel="icon" href="/static/icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/static/app.css">
+  <script src="/static/htmx.min.js" defer></script>
+  <script src="/static/sortable.min.js" defer></script>
+  <script src="/static/app.js" defer></script>
+  <meta name="htmx-config"
+    content='{"historyCacheSize":0,"allowEval":false,"includeIndicatorStyles":false,"scrollIntoViewOnBoost":false}'>
+</head>
+
+<body>
+  <div id="workspace" hx-history-elt>{{template "content" .}}</div>
+  <div id="toast" role="status" aria-live="polite"></div>
+</body>
+
+</html>{{end}}
+{{define "workspace"}}<div id="workspace" hx-history-elt>{{template "content" .}}</div>{{end}}
+{{define "content"}}
+<div class="app" data-board="{{.Board.ID}}" data-revision="{{.Revision}}" data-return="{{.ReturnURL}}"
+  data-filtered="{{.ReadOnly}}" data-archived="{{.Archived}}" hx-target="#workspace" hx-swap="outerHTML">
+  <aside class="sidebar"><a class="brand" href="/" hx-get="/" hx-push-url="true"><span class="brand-icon">k</span>
+      kango<span class="brand-dot">.</span></a>
+    <div class="sidebar-heading">WORKSPACE <span class="local-badge">LOCAL</span></div>
+    <div class="board-label">Your boards <a class="icon-button" aria-label="Create board" href="/?modal=new-board"
+        hx-get="/?modal=new-board" hx-push-url="true">+</a></div>
+    <nav aria-label="Boards">{{range .Boards}}<a class="board-nav {{if eq .ID $.Board.ID}}active{{end}}"
+        href="/board/{{.ID}}" hx-get="/board/{{.ID}}" hx-push-url="true"><span class="board-icon">▤</span>{{.Name}}<span
+          class="nav-arrow">↗</span></a>{{end}}</nav>
+    <div class="sidebar-footer"><a href="{{modalURL .ReturnURL `settings` `` 0}}" hx-get="{{modalURL .ReturnURL `settings` `` 0}}" hx-push-url="true" class="settings-link">⚙ &nbsp; Workspace settings</a></div>
+  </aside>
+  <main>
+    <header class="topbar">
+      <div class="breadcrumb">Workspace <span>/</span> {{if .Board.ID}}{{.Board.Name}}{{else}}Your boards{{end}}</div>
+    </header>
+    {{if .Board.ID}}
+    <section class="board-heading">
+      <div>
+        <h1>{{.Board.Name}}<a class="heading-edit" title="Edit board"
+            href="/board/{{.Board.ID}}?modal=settings&entity=board&edit={{.Board.ID}}"
+            hx-get="/board/{{.Board.ID}}?modal=settings&entity=board&edit={{.Board.ID}}" hx-push-url="true">↗</a></h1>
+      </div><a class="button primary" href="/board/{{.Board.ID}}?modal=new-card"
+        hx-get="/board/{{.Board.ID}}?modal=new-card" hx-push-url="true"><span>+</span> New card</a>
+    </section>
+    <form id="filters" class="toolbar" method="get" action="/board/{{.Board.ID}}" hx-get="/board/{{.Board.ID}}"
+      hx-push-url="true" hx-trigger="submit, input changed delay:400ms from:input, change from:select"><label
+        class="search"><span>⌕</span><input id="search" type="search" name="q" value="{{.Query}}"
+          placeholder="Search cards…" aria-label="Search cards"></label><select name="status"
+        aria-label="Filter by status">
+        <option value="">All statuses</option>{{range .BoardStatuses}}<option value="{{.ID}}" {{if eq .ID
+          $.StatusID}}selected{{end}}>{{.Name}}</option>{{end}}
+      </select><select name="tag" aria-label="Filter by tag">
+        <option value="">All tags</option>{{range .Tags}}<option {{if eq . $.Tag}}selected{{end}}>{{.}}</option>{{end}}
+      </select><select name="archived" aria-label="Active or archived cards">
+        <option value="" {{if not .Archived}}selected{{end}}>Active cards</option>
+        <option value="1" {{if .Archived}}selected{{end}}>Archived cards</option>
+      </select>{{if .ReadOnly}}<a class="text-button" href="/board/{{.Board.ID}}" hx-get="/board/{{.Board.ID}}"
+        hx-push-url="true">Clear filters</a>{{end}}{{if .ReadOnly}}<span class="toolbar-hint">Clear filters to
+        reorder</span>{{end}}</form>
+    <div id="columns" class="columns" aria-label="Kanban board">{{range .ColumnsView}}<section class="column"
+        data-id="{{.ID}}">
+        <div class="column-heading"><span class="column-handle" tabindex="0" title="Drag to reorder column">⠿</span>
+          <h2>{{.Name}}</h2><span class="count">{{len .Cards}}</span><a class="icon-button column-menu"
+            title="Edit column" href="/board/{{$.Board.ID}}?modal=settings&entity=column&edit={{.ID}}"
+            hx-get="/board/{{$.Board.ID}}?modal=settings&entity=column&edit={{.ID}}" hx-push-url="true">···</a>
+        </div>
+        <div class="card-list" data-column="{{.ID}}">{{range .Cards}}<article class="card" data-id="{{.ID}}"
+            tabindex="0" aria-label="{{.Title}}" data-card-url="/card/{{.ID}}">
+            <div class="card-top"><span class="card-id">#{{.ID}}</span><span class="status-pill">{{statusName $.Statuses
+                .StatusID}}</span></div><a class="card-title" href="/card/{{.ID}}" hx-get="/card/{{.ID}}"
+              hx-push-url="true">{{.Title}}</a>{{if .Description}}<p class="card-description">{{.Description}}</p>
+            {{end}}{{if .Tags}}<div class="tags">{{range .Tags}}<span class="tag">{{.}}</span>{{end}}</div>{{end}}{{if
+            or .DueDate .Checklist}}<div class="card-meta">{{if .DueDate}}<span class="due-date"
+                data-due="{{.DueDate}}">◷ {{.DueDate}}</span>{{end}}{{if .Checklist}}<span>☑ {{doneCount
+                .Checklist}}/{{len .Checklist}}</span>{{end}}</div>{{end}}
+          </article>{{end}}<div class="column-empty">No cards</div>
+        </div><a class="add-card" href="/board/{{$.Board.ID}}?modal=new-card&column={{.ID}}"
+          hx-get="/board/{{$.Board.ID}}?modal=new-card&column={{.ID}}" hx-push-url="true">+ &nbsp; Add card</a>
+      </section>{{end}}<a class="add-column" href="/board/{{.Board.ID}}?modal=settings&entity=column"
+        hx-get="/board/{{.Board.ID}}?modal=settings&entity=column" hx-push-url="true">+ &nbsp; Add column</a></div>
+    {{else}}<section class="welcome">
+      <div class="welcome-icon">▤</div>
+      <h1>No boards yet</h1><a class="button primary" href="/?modal=new-board" hx-get="/?modal=new-board"
+        hx-push-url="true">+ Create board</a>
+    </section>{{end}}
+  </main>
+</div>
+{{if or (eq .Modal "card") (eq .Modal "new-card")}}{{template "card-modal" .}}{{end}}
+{{if eq .Modal "new-board"}}{{template "new-board-modal" .}}{{end}}
+{{if eq .Modal "settings"}}{{template "settings-modal" .}}{{end}}
+{{end}}
+
+{{define "modal-close"}}<a class="icon-button close-modal" aria-label="Close modal" href="{{.ReturnURL}}"
+  hx-get="{{.ReturnURL}}" hx-target="#workspace" hx-swap="outerHTML" hx-push-url="true">×</a>{{end}}
+{{define "new-board-modal"}}<div class="modal-backdrop">
+  <section class="modal small-modal" role="dialog" aria-modal="true" aria-labelledby="modal-title"
+    hx-target="#workspace" hx-swap="outerHTML">
+    <header class="modal-heading">
+      <div>
+        <h2 id="modal-title">New board</h2>
+      </div>{{template "modal-close" .}}
+    </header>
+    <form method="post" action="/actions/create_board" hx-post="/actions/create_board"><input type="hidden"
+        name="return" value="{{.ReturnURL}}"><label>Board name<input name="name" required maxlength="300"
+          placeholder="e.g. Personal projects" autofocus></label>
+      <footer class="modal-footer"><button class="button primary">Create board ↗</button></footer>
+    </form>
+  </section>
+</div>{{end}}
+
+{{define "card-modal"}}<div class="modal-backdrop">
+  <section class="modal card-modal" role="dialog" aria-modal="true" aria-labelledby="modal-title" hx-target="#workspace"
+    hx-swap="outerHTML">
+    <header class="modal-heading">
+      <div class="eyebrow">{{if .Card.ID}}CARD #{{.Card.ID}}{{else}}NEW CARD{{end}} <span class="divider">/</span>
+        {{.Board.Name}}{{if .Card.Archived}} <span class="status-pill">Archived</span>{{end}}</div>{{template
+      "modal-close" .}}
+    </header>
+    <form id="card-form" method="post" action="/actions/{{if .Card.ID}}update_card{{else}}create_card{{end}}"
+      hx-post="/actions/{{if .Card.ID}}update_card{{else}}create_card{{end}}"><input type="hidden" name="id"
+        value="{{.Card.ID}}"><input type="hidden" name="return" value="{{.ReturnURL}}">{{if not .Card.ID}}<input
+        type="hidden" name="board_id" value="{{.Board.ID}}">{{end}}
+      <label id="modal-title" class="sr-only" for="card-title">Card title</label><input id="card-title"
+        class="title-input" name="title" value="{{.Card.Title}}" required maxlength="500" placeholder="Card title"
+        autofocus>
+      <div class="card-properties"><label>Board<select id="card-board" aria-label="Card board">{{range .Boards}}<option
+              value="{{.ID}}" {{if eq .ID $.Card.BoardID}}selected{{end}}>{{.Name}}</option>
+            {{end}}</select></label><label>Column<select id="card-column" name="column_id" required>{{range .Columns}}
+            <option value="{{.ID}}" data-board="{{.BoardID}}" {{if eq .ID $.Card.ColumnID}}selected{{end}}>{{.Name}}
+            </option>{{end}}</select></label><label>Status<select id="card-status" name="status_id" required>{{range
+            .Statuses}}<option value="{{.ID}}" data-board="{{.BoardID}}" {{if eq .ID $.Card.StatusID}}selected{{end}}>
+              {{.Name}}</option>{{end}}</select></label></div>
+      <div class="two-fields"><label>Tags<input name="tags" value="{{join .Card.Tags `, `}}"
+            placeholder="design, personal, next-up"><span class="form-hint">Separate with
+            commas</span></label><label>Due date<input type="date" name="due_date" value="{{.Card.DueDate}}"></label>
+      </div>
+      <div class="description-label"><label for="description">Description</label>
+        <div class="tabs"><button type="button" class="tab active" data-editor-tab="write">Write</button><button
+            type="button" class="tab" data-editor-tab="preview" hx-post="/preview" hx-include="#description"
+            hx-target="#markdown-preview" hx-swap="innerHTML">Preview</button></div>
+      </div><textarea id="description" name="description" rows="7"
+        placeholder="Markdown description">{{.Card.Description}}</textarea>
+      <div id="markdown-preview" class="markdown" hidden>{{.DescriptionHTML}}</div>
+      <label class="checklist-label" for="checklist">Checklist <span class="form-hint">One item per line · [x] marks
+          complete</span></label><textarea id="checklist" name="checklist" rows="3"
+        placeholder="[ ] First step&#10;[ ] Next step">{{.ChecklistText}}</textarea>
+      <div id="checklist-preview"></div>
+      <footer class="modal-footer">{{if .Card.ID}}<span class="form-hint">Changes save when you click
+          Save</span>{{end}}{{if .Card.ID}}<button class="button" name="open" value="1">Save</button>{{end}}<button
+          class="button primary">{{if .Card.ID}}Save & close{{else}}Create card{{end}} ↗</button></footer>
+    </form>
+    {{if .Card.ID}}<div class="card-extras">
+      <section>
+        <div class="section-label">Connections <span>{{len .CardLinks}}</span></div>{{range .CardLinks}}<div
+          class="link-row"><span class="link-type">{{.Label}}</span><a href="/card/{{.Card.ID}}"
+            hx-get="/card/{{.Card.ID}}" hx-push-url="true">#{{.Card.ID}} {{.Card.Title}} ↗</a>
+          <form hx-post="/actions/delete_link"><input type="hidden" name="id" value="{{.ID}}"><input type="hidden"
+              name="return" value="/card/{{$.Card.ID}}"><button class="icon-button"
+              aria-label="Remove connection">×</button></form>
+        </div>{{end}}<form class="inline-form" hx-post="/actions/create_link" method="post"
+          action="/actions/create_link"><input type="hidden" name="source_id" value="{{.Card.ID}}"><input type="hidden"
+            name="return" value="/card/{{.Card.ID}}"><select name="type_id" aria-label="Relationship type"
+            required>{{range .RelationTypes}}<option value="{{.ID}}">{{.Name}}</option>{{end}}</select><select
+            name="target_id" aria-label="Related card" required>
+            <option value="">Choose a card…</option>{{range .Cards}}{{if ne .ID $.Card.ID}}<option value="{{.ID}}">
+              #{{.ID}} {{.Title}} · {{boardName $.Boards .BoardID}}</option>{{end}}{{end}}
+          </select><button class="button">Link</button></form>
+      </section>
+      <section>
+        <div class="section-label">Attachments <span>{{len .CardFiles}}</span></div>{{range .CardFiles}}<div
+          class="link-row"><span>↧</span><a href="/attachment/{{.ID}}" download>{{.Name}}</a><span
+            class="form-hint">{{fileSize .Size}}</span>
+          <form hx-post="/actions/delete_attachment" data-confirm="Delete this attachment?"><input type="hidden"
+              name="id" value="{{.ID}}"><input type="hidden" name="return" value="/card/{{$.Card.ID}}"><button
+              class="icon-button" aria-label="Delete attachment">×</button></form>
+        </div>{{end}}<form class="inline-form upload-form" hx-post="/actions/create_attachment"
+          hx-encoding="multipart/form-data" method="post" enctype="multipart/form-data"
+          action="/actions/create_attachment"><input type="hidden" name="id" value="{{.Card.ID}}"><input type="hidden"
+            name="return" value="/card/{{.Card.ID}}"><input type="file" name="file" aria-label="Choose attachment"
+            required><button class="button">Upload</button></form>
+        <p class="form-hint">Up to 10 MB per file.</p>
+      </section>
+      <div class="danger-actions">
+        <form hx-post="/actions/update_card"><input type="hidden" name="id" value="{{.Card.ID}}"><input type="hidden"
+            name="archived" value="{{if .Card.Archived}}false{{else}}true{{end}}"><input type="hidden" name="return"
+            value="{{.ReturnURL}}"><button class="text-button">{{if .Card.Archived}}↶ Restore card{{else}}↓ Archive
+            card{{end}}</button></form>
+        <form hx-post="/actions/delete_card"
+          data-confirm="Permanently delete this card, its links, and its attachments?"><input type="hidden" name="id"
+            value="{{.Card.ID}}"><input type="hidden" name="return" value="{{.ReturnURL}}"><button
+            class="text-button danger">Delete card</button></form><span class="form-hint">#{{.Card.ID}} · <a
+            href="/card/{{.Card.ID}}" class="copy-link" data-copy="/card/{{.Card.ID}}">Copy link ↗</a></span>
+      </div>
+    </div>{{end}}
+  </section>
+</div>{{end}}
+
+{{define "settings-modal"}}<div class="modal-backdrop">
+  <section class="modal settings-modal" role="dialog" aria-modal="true" aria-labelledby="modal-title"
+    hx-target="#workspace" hx-swap="outerHTML">
+    <header class="modal-heading">
+      <div>
+        <h2 id="modal-title">Workspace settings</h2>
+      </div>{{template "modal-close" .}}
+    </header>
+    {{if .Entity}}<section class="settings-section">
+      <h3>{{if .EditingID}}Edit{{else}}New{{end}} {{if eq .Entity "relationship_type"}}relationship
+        type{{else}}{{.Entity}}{{end}}</h3>
+      <form class="entity-form" method="post" action="/actions/{{if .EditingID}}update{{else}}create{{end}}_{{.Entity}}"
+        hx-post="/actions/{{if .EditingID}}update{{else}}create{{end}}_{{.Entity}}"><input type="hidden" name="id"
+          value="{{.EditingID}}"><input type="hidden" name="board_id" value="{{.Board.ID}}"><input type="hidden"
+          name="return" value="{{modalURL .ReturnURL `settings` `` 0}}"><label>Name<input name="name" required
+            maxlength="300" value="{{.EntityName}}" autofocus></label>{{if eq .Entity
+        "relationship_type"}}<label>Reverse wording<input name="inverse" value="{{.Inverse}}"
+            placeholder="e.g. blocked by"></label>{{end}}<button class="button primary">{{if .EditingID}}Save
+          changes{{else}}Create{{end}}</button></form>
+    </section>{{end}}
+    {{if .Board.ID}}<section class="settings-section">
+      <h3>Board <span>{{.Board.Name}}</span></h3>
+      <div class="settings-row"><a href="/board/{{.Board.ID}}?modal=settings&entity=board&edit={{.Board.ID}}"
+          hx-get="/board/{{.Board.ID}}?modal=settings&entity=board&edit={{.Board.ID}}" hx-push-url="true">Rename board
+          ↗</a>
+        <form hx-post="/actions/delete_board"
+          data-confirm="Permanently delete this board and all its cards, links, and attachments?"><input type="hidden"
+            name="id" value="{{.Board.ID}}"><input type="hidden" name="return" value="/"><button
+            class="text-button danger">Delete board</button></form>
+      </div>
+    </section>
+    <section class="settings-section">
+      <h3>Columns <a class="text-button" href="/board/{{.Board.ID}}?modal=settings&entity=column"
+          hx-get="/board/{{.Board.ID}}?modal=settings&entity=column" hx-push-url="true">+ Add</a></h3>
+      <p class="form-hint">Where a card lives. Drag the column handle on the board to reorder.</p>{{range
+      .ColumnsView}}{{$column := .}}<div class="settings-row"><a
+          href="/board/{{$.Board.ID}}?modal=settings&entity=column&edit={{.ID}}"
+          hx-get="/board/{{$.Board.ID}}?modal=settings&entity=column&edit={{.ID}}" hx-push-url="true">{{.Name}} ↗</a>
+        <form class="inline-form" hx-post="/actions/delete_column"
+          data-confirm="Delete this column? Its cards will move to the selected replacement."><input type="hidden"
+            name="id" value="{{.ID}}"><input type="hidden" name="return"
+            value="/board/{{$.Board.ID}}?modal=settings"><select name="replacement_id" aria-label="Replacement column">
+            <option value="">No replacement</option>{{range $.ColumnsView}}{{if ne .ID $column.ID}}<option
+              value="{{.ID}}">Move to {{.Name}}</option>{{end}}{{end}}
+          </select><button class="text-button danger">Delete</button></form>
+      </div>{{end}}
+    </section>
+    <section class="settings-section">
+      <h3>Statuses <a class="text-button" href="/board/{{.Board.ID}}?modal=settings&entity=status"
+          hx-get="/board/{{.Board.ID}}?modal=settings&entity=status" hx-push-url="true">+ Add</a></h3>
+      <p class="form-hint">How a card is progressing. Independent of its column.</p>{{range .BoardStatuses}}{{$status :=
+      .}}<div class="settings-row"><a href="/board/{{$.Board.ID}}?modal=settings&entity=status&edit={{.ID}}"
+          hx-get="/board/{{$.Board.ID}}?modal=settings&entity=status&edit={{.ID}}" hx-push-url="true">{{.Name}} ↗</a>
+        <form class="inline-form" hx-post="/actions/delete_status"
+          data-confirm="Delete this status? Its cards will use the selected replacement."><input type="hidden" name="id"
+            value="{{.ID}}"><input type="hidden" name="return" value="/board/{{$.Board.ID}}?modal=settings"><select
+            name="replacement_id" aria-label="Replacement status">
+            <option value="">No replacement</option>{{range $.BoardStatuses}}{{if ne .ID $status.ID}}<option
+              value="{{.ID}}">Use {{.Name}}</option>{{end}}{{end}}
+          </select><button class="text-button danger">Delete</button></form>
+      </div>{{end}}
+    </section>{{end}}
+    <section class="settings-section">
+      <h3>Relationship types <a class="text-button" href="{{modalURL .ReturnURL `settings` `relationship_type` 0}}"
+          hx-get="{{modalURL .ReturnURL `settings` `relationship_type` 0}}" hx-push-url="true">+ Add</a></h3>
+      <p class="form-hint">Shared by all boards. Choose a label for each direction.</p>{{range .RelationTypes}}<div
+        class="settings-row"><a href="{{modalURL $.ReturnURL `settings` `relationship_type` .ID}}"
+          hx-get="{{modalURL $.ReturnURL `settings` `relationship_type` .ID}}" hx-push-url="true">{{.Name}} <span
+            class="form-hint">/ {{.Inverse}}</span> ↗</a>
+        <form hx-post="/actions/delete_relationship_type"
+          data-confirm="Delete this relationship type? Remove its links first."><input type="hidden" name="id"
+            value="{{.ID}}"><input type="hidden" name="return" value="{{modalURL $.ReturnURL `settings` `` 0}}"><button
+            class="text-button danger">Delete</button></form>
+      </div>{{end}}
+    </section>
+    <section class="settings-section"><a class="button" href="/?modal=new-board" hx-get="/?modal=new-board"
+        hx-push-url="true">+ Create another board</a></section>
+    <footer class="settings-footer"><span class="connection-dot"></span> MCP endpoint <code>/mcp</code><span
+        class="form-hint">Generic Streamable HTTP · Full workspace control</span></footer>
+  </section>
+</div>{{end}}

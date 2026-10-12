@@ -1,0 +1,8 @@
+/data/
+/kango
+*.db
+*.db-shm
+*.db-wal
+/tmp/
+/.playwright-mcp/
+.playright-mcp
