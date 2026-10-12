@@ -79,6 +79,6 @@ EOF
 uploads=()
 for archive in "${archives[@]}"; do uploads+=("$out/$archive"); done
 uploads+=("$out/checksums.txt" "$out/SOURCE_COMMIT")
-flags=()
-if [[ "$version" == *-* ]]; then flags+=(--prerelease); fi
-gh release create "$version" "${uploads[@]}" --repo "$repo" --target "$commit" --title "$version" --notes-file "$out/release-notes.md" "${flags[@]}"
+release_args=(release create "$version" "${uploads[@]}" --repo "$repo" --target "$commit" --title "$version" --notes-file "$out/release-notes.md")
+if [[ "$version" == *-* ]]; then release_args+=(--prerelease); fi
+gh "${release_args[@]}"
