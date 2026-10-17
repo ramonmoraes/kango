@@ -9,7 +9,6 @@ import (
 	"html/template"
 	"io"
 	"io/fs"
-	"net"
 	"net/http"
 	"net/url"
 	"path/filepath"
@@ -157,16 +156,6 @@ func (a *App) handler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodPost {
 			r.Body = http.MaxBytesReader(w, r.Body, 15<<20)
-		}
-		// Local-only app: reject browser requests and DNS rebinding from other origins.
-		host, _, err := net.SplitHostPort(r.Host)
-		if err != nil {
-			host = r.Host
-		}
-		ip := net.ParseIP(host)
-		if host != "localhost" && (ip == nil || !ip.IsLoopback()) {
-			http.Error(w, "Kango accepts localhost hosts only", 403)
-			return
 		}
 		if origin := r.Header.Get("Origin"); origin != "" {
 			u, e := url.Parse(origin)

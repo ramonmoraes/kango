@@ -275,8 +275,18 @@ func TestViewsFormsMarkdownAndOrigins(t *testing.T) {
 		t.Fatal(e)
 	}
 	res.Body.Close()
-	if res.StatusCode != 403 {
-		t.Fatal("foreign host accepted")
+	if res.StatusCode != 200 {
+		t.Fatalf("custom host rejected: %d", res.StatusCode)
+	}
+	req, _ = http.NewRequest("GET", server.URL+"/", nil)
+	req.Host = "kango.localhost"
+	res, e = http.DefaultClient.Do(req)
+	if e != nil {
+		t.Fatal(e)
+	}
+	res.Body.Close()
+	if res.StatusCode != 200 {
+		t.Fatalf("Portless host rejected: %d", res.StatusCode)
 	}
 	if b.ID == 0 {
 		t.Fatal("missing board")
